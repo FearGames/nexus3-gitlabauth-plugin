@@ -77,7 +77,6 @@ public class GitlabApiClient {
 
     private GitlabPrincipal doAuthz(String loginName, char[] token) throws GitlabAuthenticationException {
         GitlabUser gitlabUser;
-        List<GitlabGroup> groups = null;
         try {
             GitlabAPI gitlabAPI = GitlabAPI.connect(configuration.getGitlabApiUrl(), String.valueOf(token));
             gitlabAPI.ignoreCertificateErrors(configuration.getGitlabIgnoreCertificateErrors());
@@ -86,13 +85,17 @@ public class GitlabApiClient {
             throw new GitlabAuthenticationException(e);
         }
 
-        if (gitlabUser==null || !loginName.equals(gitlabUser.getEmail())) {
-            throw new GitlabAuthenticationException("Given username not found or does not match Github Username!");
+        if (gitlabUser == null) {
+            throw new GitlabAuthenticationException("Given username not found!");
+        }
+
+        if (!loginName.equals(gitlabUser.getUsername()) && !loginName.equals(gitlabUser.getEmail())) {
+            throw new GitlabAuthenticationException("Given username does not match GitLab username or email!");
         }
 
         GitlabPrincipal principal = new GitlabPrincipal();
 
-        principal.setUsername(gitlabUser.getEmail());
+        principal.setUsername(gitlabUser.getUsername());
         principal.setGroups(getGroups((gitlabUser.getUsername())));
 
         return principal;
