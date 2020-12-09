@@ -42,9 +42,10 @@ The following lines will:
 - unzip the releae to the maven repository
 - add the plugin to the `karaf` `startup.properties`.
 ```shell
+VERSION=1.1.0
 mkdir -p /opt/sonatype/nexus/system/fr/auchan/ &&\
-wget -O /opt/sonatype/nexus/system/fr/auchan/nexus3-gitlabauth-plugin-1.1.0.jar https://github.com/auchanretailfrance/nexus3-gitlabauth-plugin/releases/download/1.1.0/nexus3-gitlabauth-plugin-1.1.0.jar &&\
-echo "mvn\:fr.auchan/nexus3-gitlabauth-plugin/1.1.0 = 200" >> /opt/sonatype/nexus/etc/karaf/startup.properties
+wget -O "/opt/sonatype/nexus/system/fr/auchan/nexus3-gitlabauth-plugin-$VERSION.jar" "https://github.com/FearGames/nexus3-gitlabauth-plugin/releases/download/$VERSION/nexus3-gitlabauth-plugin-$VERSION.jar" &&\
+echo "mvn\:fr.auchan/nexus3-gitlabauth-plugin/$VERSION = 200" >> /opt/sonatype/nexus/etc/karaf/startup.properties
 ```
 
 #### 2. Create configuration
@@ -52,7 +53,7 @@ Create `/opt/sonatype/nexus/etc/gitlabauth.properties`
 
 Within the file you can configure the following properties:
 
-|Property        |Description                              |[Default](https://github.com/larscheid-schmitzhermes/nexus3-gitlabauth-plugin/blob/master/src/main/java/fr/auchan/nexus3/github/oauth/plugin/configuration/GithubOauthConfiguration.java)|
+|Property        |Description                              |[Default](https://github.com/FearGames/nexus3-gitlabauth-plugin/blob/master/src/main/java/fr/auchan/nexus3/gitlabauth/plugin/config/GitlabAuthConfiguration.java)|
 |---             |---                                      |---    |
 |`gitlab.api.url`|URL of the Gitlab API to operate against.|`https://gitlab.com`|
 |`gitlab.api.key`|An admin sudo API key to list groups of users.|
