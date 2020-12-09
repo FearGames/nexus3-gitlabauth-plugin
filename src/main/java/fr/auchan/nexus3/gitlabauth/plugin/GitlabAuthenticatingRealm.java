@@ -22,12 +22,13 @@ import java.util.stream.Collectors;
 
 @Singleton
 @Named
-@Description("Gitlab Authentication Realm")
+@Description("Gitlab Realm")
 public class GitlabAuthenticatingRealm extends AuthorizingRealm {
-    private GitlabApiClient gitlabClient;
 
     public static final String NAME = GitlabAuthenticatingRealm.class.getName();
     private static final Logger LOGGER = LoggerFactory.getLogger(GitlabAuthenticatingRealm.class);
+
+    private final GitlabApiClient gitlabClient;
 
     @Inject
     public GitlabAuthenticatingRealm(final GitlabApiClient gitlabClient) {
@@ -42,18 +43,18 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm {
     @Override
     protected void onInit() {
         super.onInit();
-        LOGGER.info("Keycloak Realm initialized...");
+        LOGGER.info("GitLab Realm initialized...");
     }
 
     @Override
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
         GitlabPrincipal principal = (GitlabPrincipal) principals.getPrimaryPrincipal();
-        LOGGER.info("doGetAuthorizationInfo for user {} with roles {}", principal.getUsername(), principal.getGroups().stream().collect(Collectors.joining()));
+        LOGGER.info("doGetAuthorizationInfo for user {} with roles {}", principal.getUsername(), String.join("", principal.getGroups()));
         return new SimpleAuthorizationInfo(principal.getGroups());
     }
 
     @Override
-    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
+    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) {
         if (!(token instanceof UsernamePasswordToken)) {
             throw new UnsupportedTokenException(String.format("Token of type %s  is not supported. A %s is required.",
                     token.getClass().getName(), UsernamePasswordToken.class.getName()));
@@ -65,7 +66,7 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm {
         GitlabPrincipal authenticatedPrincipal;
         try {
             authenticatedPrincipal = gitlabClient.authz(t.getUsername(), t.getPassword());
-            LOGGER.info("Successfully authenticated {}",t.getUsername());
+            LOGGER.info("Successfully authenticated {}", t.getUsername());
         } catch (GitlabAuthenticationException e) {
             LOGGER.warn("Failed authentication", e);
             return null;
@@ -77,8 +78,7 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm {
     /**
      * Creates the simple auth info.
      *
-     * @param token
-     *         the token
+     * @param token the token
      * @return the simple authentication info
      */
     private SimpleAuthenticationInfo createSimpleAuthInfo(GitlabPrincipal principal, UsernamePasswordToken token) {

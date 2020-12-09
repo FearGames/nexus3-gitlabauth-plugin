@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Properties;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.slf4j.Logger;
@@ -17,28 +18,30 @@ import com.google.inject.Singleton;
 @Singleton
 @Named
 public class GitlabAuthConfiguration {
+
     private static final String CONFIG_FILE = "gitlabauth.properties";
 
-    private static final Duration DEFAULT_PRINCIPAL_CACHE_TTL = Duration.ofMinutes(1);
+    private static final String API_URL_DEFAULT = "https://gitlab.com";
+    private static final boolean IGNORE_CERTIFICATE_ERRORS_DEFAULT = false;
+    private static final Duration CACHE_TTL_DEFAULT = Duration.ofMinutes(1);
+    private static final String DEFAULT_ROLES_DEFAULT = "";
+    private static final boolean ADMIN_MAPPING_DEFAULT = true;
+    private static final boolean GROUP_MAPPING_DEFAULT = true;
 
-    private static final String DEFAULT_GITLAB_URL = "https://gitlab.com";
-
-    private static final String DEFAULT_IGNORE_CERTIFICATE_ERRORS = "false";
-
-    private static final String GITLAB_API_URL_KEY = "gitlab.api.url";
-
-    private static final String GITLAB_IGNORE_CERTIFICATE_ERRORS = "gitlab.api.certificate.ignore_errors";
-
-    private static final String GITLAB_SUDO_API_KEY_KEY = "gitlab.api.key";
-
-    private static final String GITLAB_PRINCIPAL_CACHE_TTL_KEY = "gitlab.principal.cache.ttl";
+    private static final String API_URL_KEY = "gitlab.api.url";
+    private static final String IGNORE_CERTIFICATE_ERRORS_KEY = "gitlab.api.certificate.ignore_errors";
+    private static final String API_KEY_KEY = "gitlab.api.key";
+    private static final String CACHE_TTL_KEY = "gitlab.principal.cache.ttl";
+    private static final String DEFAULT_ROLES_KEY = "gitlab.role.default";
+    private static final String ADMIN_MAPPING_KEY = "gitlab.role.mapping.admin.enabled";
+    private static final String GROUP_MAPPING_KEY = "gitlab.role.mapping.group.enabled";
     
     private static final Logger LOGGER = LoggerFactory.getLogger(GitlabAuthConfiguration.class);
 
-    private Properties configuration;
+    private final Properties configuration;
 
-    @PostConstruct
-    public void init() {
+    @Inject
+    public GitlabAuthConfiguration() {
         configuration = new Properties();
 
         try {
@@ -48,19 +51,31 @@ public class GitlabAuthConfiguration {
         }
     }
 
-    public String getGitlabApiUrl() {
-        return configuration.getProperty(GITLAB_API_URL_KEY, DEFAULT_GITLAB_URL);
+    public String getApiUrl() {
+        return configuration.getProperty(API_URL_KEY, API_URL_DEFAULT);
     }
 
-    public Boolean getGitlabIgnoreCertificateErrors() {
-        return configuration.getProperty(GITLAB_IGNORE_CERTIFICATE_ERRORS, DEFAULT_IGNORE_CERTIFICATE_ERRORS).equals("true");
+    public boolean getIgnoreCertificateErrors() {
+        return Boolean.parseBoolean(configuration.getProperty(IGNORE_CERTIFICATE_ERRORS_KEY, String.valueOf(IGNORE_CERTIFICATE_ERRORS_DEFAULT)));
     }
 
-    public String getGitlabApiKey() {
-        return configuration.getProperty(GITLAB_SUDO_API_KEY_KEY);
+    public String getApiKey() {
+        return configuration.getProperty(API_KEY_KEY, "");
     }
 
-    public Duration getPrincipalCacheTtl() {
-        return Duration.parse(configuration.getProperty(GITLAB_PRINCIPAL_CACHE_TTL_KEY, DEFAULT_PRINCIPAL_CACHE_TTL.toString()));
+    public Duration getCacheTtl() {
+        return Duration.parse(configuration.getProperty(CACHE_TTL_KEY, CACHE_TTL_DEFAULT.toString()));
+    }
+
+    public String getDefaultRoles() {
+        return configuration.getProperty(DEFAULT_ROLES_KEY, DEFAULT_ROLES_DEFAULT);
+    }
+
+    public boolean getAdminMapping() {
+        return Boolean.parseBoolean(configuration.getProperty(ADMIN_MAPPING_KEY, String.valueOf(ADMIN_MAPPING_DEFAULT)));
+    }
+
+    public boolean getGroupMapping() {
+        return Boolean.parseBoolean(configuration.getProperty(GROUP_MAPPING_KEY, String.valueOf(GROUP_MAPPING_DEFAULT)));
     }
 }

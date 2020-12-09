@@ -66,6 +66,9 @@ gitlab.api.url=https://gitlab.com
 gitlab.api.certificate.ignore_errors=false
 gitlab.api.key=XXXXXXXXXXXXXXXXXXXXX
 gitlab.principal.cache.ttl=PT1M
+gitlab.role.default=maven-deploy
+gitlab.role.mapping.admin.enabled=true
+gitlab.role.mapping.group.enabled=true
 ```
 
 #### 3. Restart Nexus

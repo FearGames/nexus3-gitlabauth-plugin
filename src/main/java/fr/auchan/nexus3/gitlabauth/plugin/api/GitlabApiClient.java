@@ -12,11 +12,12 @@ import org.gitlab.api.models.GitlabUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -25,15 +26,17 @@ import java.util.stream.Collectors;
 @Singleton
 @Named("GitlabApiClient")
 public class GitlabApiClient {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(GitlabApiClient.class);
 
-    private GitlabAPI client;
-    private GitlabAuthConfiguration configuration;
-    // Cache token lookups to reduce the load on Github's User API to prevent hitting the rate limit.
-    private Cache<String, GitlabPrincipal> tokenToPrincipalCache;
+    private final GitlabAPI client;
+    private final GitlabAuthConfiguration configuration;
 
+    // Cache token lookups to reduce the load on Github's User API to prevent hitting the rate limit.
+    private final Cache<String, GitlabPrincipal> tokenToPrincipalCache;
+
+    /*
     public GitlabApiClient() {
-        //no args constructor is needed
     }
 
     public GitlabApiClient(GitlabAPI client, GitlabAuthConfiguration configuration) {
@@ -41,24 +44,26 @@ public class GitlabApiClient {
         this.configuration = configuration;
         initPrincipalCache();
     }
+    */
 
     @Inject
     public GitlabApiClient(GitlabAuthConfiguration configuration) {
         this.configuration = configuration;
+        client = GitlabAPI.connect(configuration.getApiUrl(), configuration.getApiKey());
+        client.ignoreCertificateErrors(configuration.getIgnoreCertificateErrors());
+        tokenToPrincipalCache = CacheBuilder.newBuilder()
+                .expireAfterWrite(configuration.getCacheTtl().toMillis(), TimeUnit.MILLISECONDS)
+                .build();
     }
 
+    /*
     @PostConstruct
     public void init() {
-        client = GitlabAPI.connect(configuration.getGitlabApiUrl(), configuration.getGitlabApiKey());
-        client.ignoreCertificateErrors(configuration.getGitlabIgnoreCertificateErrors());
-        initPrincipalCache();
     }
 
     private void initPrincipalCache() {
-        tokenToPrincipalCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(configuration.getPrincipalCacheTtl().toMillis(), TimeUnit.MILLISECONDS)
-                .build();
     }
+    */
 
     public GitlabPrincipal authz(String login, char[] token) throws GitlabAuthenticationException {
         // Combine the login and the token as the cache key since they are both used to generate the principal. If either changes we should obtain a new
@@ -78,8 +83,8 @@ public class GitlabApiClient {
     private GitlabPrincipal doAuthz(String loginName, char[] token) throws GitlabAuthenticationException {
         GitlabUser gitlabUser;
         try {
-            GitlabAPI gitlabAPI = GitlabAPI.connect(configuration.getGitlabApiUrl(), String.valueOf(token));
-            gitlabAPI.ignoreCertificateErrors(configuration.getGitlabIgnoreCertificateErrors());
+            GitlabAPI gitlabAPI = GitlabAPI.connect(configuration.getApiUrl(), String.valueOf(token));
+            gitlabAPI.ignoreCertificateErrors(configuration.getIgnoreCertificateErrors());
             gitlabUser = gitlabAPI.getUser();
         } catch (Exception e) {
             throw new GitlabAuthenticationException(e);
@@ -89,14 +94,25 @@ public class GitlabApiClient {
             throw new GitlabAuthenticationException("Given username not found!");
         }
 
-        if (!loginName.equals(gitlabUser.getUsername()) && !loginName.equals(gitlabUser.getEmail())) {
+        if (!loginName.equalsIgnoreCase(gitlabUser.getUsername()) && !loginName.equalsIgnoreCase(gitlabUser.getEmail())) {
             throw new GitlabAuthenticationException("Given username does not match GitLab username or email!");
         }
 
         GitlabPrincipal principal = new GitlabPrincipal();
 
         principal.setUsername(gitlabUser.getUsername());
-        principal.setGroups(getGroups((gitlabUser.getUsername())));
+
+        Set<String> groups = new LinkedHashSet<>();
+        if (gitlabUser.isAdmin() != null && gitlabUser.isAdmin() && configuration.getAdminMapping()) {
+            groups.add("nx-admin");
+        }
+        if (!configuration.getDefaultRoles().isEmpty()) {
+            groups.addAll(Arrays.asList(configuration.getDefaultRoles().split(",")));
+        }
+        if (configuration.getGroupMapping()) {
+            groups.addAll(getGroups((gitlabUser.getUsername())));
+        }
+        principal.setGroups(groups);
 
         return principal;
     }
@@ -104,7 +120,7 @@ public class GitlabApiClient {
     private Set<String> getGroups(String username) throws GitlabAuthenticationException {
         List<GitlabGroup> groups;
         try {
-            groups = client.getGroupsViaSudo(username,new Pagination().withPerPage(Pagination.MAX_ITEMS_PER_PAGE));
+            groups = client.getGroupsViaSudo(username, new Pagination().withPerPage(Pagination.MAX_ITEMS_PER_PAGE));
         } catch (IOException e) {
             throw new GitlabAuthenticationException("Could not fetch groups for given username");
         }
@@ -114,6 +130,4 @@ public class GitlabApiClient {
     private String mapGitlabGroupToNexusRole(GitlabGroup team) {
         return team.getPath();
     }
-
-
 }
